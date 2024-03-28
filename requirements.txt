@@ -1,0 +1,4 @@
+ipython==8.12.3
+matplotlib==3.8.3
+tensorflow==2.15.0+nv24.2
+tensorflow_datasets==4.9.4

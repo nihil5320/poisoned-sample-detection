@@ -1,0 +1,41 @@
+// Format details, see https://aka.ms/devcontainer.json.
+// README: https://github.com/devcontainers/templates/tree/main/src/python
+{
+    // name for the container in Docker
+    "name": "TM470 Project",
+    
+    // image to use
+    "image": "nvcr.io/nvidia/tensorflow:24.02-tf2-py3",
+
+    // launch arguments for docker
+    "runArgs": [
+        "--name=TM470Project",
+        "--gpus=all",
+        "-it",
+        "--rm",
+        "--mount=type=bind,src=/home/nihil/TM470Project,target=/TM470Project",
+        "--shm-size=1g",
+        "--ulimit=memlock=-1",
+        "--ulimit=stack=67108864"
+    ],
+
+    // will use this once we have some depencies
+    "postCreateCommand": "pip3 install --user -r requirements.txt",
+
+    // install some extensions
+    // in the future might want to add elazarcoh.simply-view-image-for-python-debugging, if I end up moving away from Jupyter
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "Microsoft.Python",
+                "Microsoft.Jupyter",
+                "njpwerner.autodocstring",
+                "KevinRose.vsc-python-indent",
+                "charliermarsh.ruff"]
+          }
+    },
+
+    // and make sure we stop the container once we're done
+    "shutdownAction":"stopContainer"
+
+}
