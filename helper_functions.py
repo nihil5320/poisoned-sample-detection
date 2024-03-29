@@ -3,6 +3,7 @@ from IPython.display import HTML, display
 import tensorflow as tf
 
 import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import ImageGrid
 
 # set up plotting the training history as a helper function to save repeating it later
 def plot_history(history, model_name):
@@ -94,3 +95,33 @@ def eval_model(model_name, model, hist, val_ds, test_ds):
     
     # return the results against test data
     return results
+
+def display_samples(display_ds, grid_shape=(4, 4)):
+    """
+    Displays images from a dataset in a grid of the specified dimensions
+    
+    Args:
+        dataset (dataset): dataset iterator
+        grid_shape (tuple, optional): _description_. Defaults to (4, 4).
+    """
+    # Create an iterator over the dataset
+    iterator = iter(display_ds)
+
+    # Create a figure and axes
+    fig, axes = plt.subplots(*grid_shape, figsize=(10, 10))
+
+    # Iterate over the axes and plot samples
+    for ax in axes.flatten():
+        # Get the next batch of samples
+        try:
+            image_batch = next(iterator)
+        except StopIteration:
+            break
+
+        # Plot each image in the batch
+        for image in image_batch:
+            ax.imshow(image.numpy())
+            ax.axis('off')
+            break  # Only display one image per subplot
+    plt.tight_layout()
+    plt.show()
