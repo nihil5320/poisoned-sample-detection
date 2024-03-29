@@ -120,7 +120,7 @@ def display_samples(display_ds, grid_shape=(4, 4)):
 
         # Plot each image in the batch
         for image in image_batch:
-            ax.imshow(image.numpy())
+            ax.imshow(image.numpy().astype('uint8'))
             ax.axis('off')
             break  # Only display one image per subplot
     plt.tight_layout()

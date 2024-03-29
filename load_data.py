@@ -1,10 +1,12 @@
 import tensorflow as tf
+import tensorflow_datasets as tfds
+
 import os
 
 # see https://www.tensorflow.org/guide/data
 
 # get all the jpg files and load them into test, train and validation datasets
-def load_datasets(folder_path, image_size=512):
+def load_datasets(folder_path, image_size=512, batch_size=32):
     """
     Takes a path to a dataset folder and optionally an image size if we want to resize our image (cannot change aspect ratio).
     
@@ -17,6 +19,7 @@ def load_datasets(folder_path, image_size=512):
     Returns:
         train_ds, val_ds, test_ds (datasets): returns the compiled datasets based on all files found in the folder specified
     """
+    
     train_ds = load_dataset(os.path.join(folder_path,'train','*/*'),image_size)
     val_ds = load_dataset(os.path.join(folder_path,'validation','*/*'),image_size)
     test_ds = load_dataset(os.path.join(folder_path,'test','*/*'),image_size)
@@ -41,13 +44,15 @@ def parse_image(filename, image_size):
     # read and decode the file
     image = tf.io.read_file(filename)
     image = tf.io.decode_jpeg(image,channels=3)
-    image = tf.image.convert_image_dtype(image, tf.float32)
 
     # resize it if we need to
     shape = tf.shape(image)
     h, w = shape[0], shape[1]
     if h!=image_size or w!=image_size:
-        # image = tf.image.resize_with_crop_or_pad(image, image_size, image_size)
-        image = tf.image.resize(image, (image_size, image_size))
+        # for some reason these output float32, whilst the decode uses uint8
+        # we'll stick with uint8 to save some vram
+        image = tf.image.resize_with_crop_or_pad(image, image_size, image_size)
+        #image = tf.image.resize(image, (image_size, image_size))
+        image = tf.image.convert_image_dtype(image, tf.uint8)
 
     return image, encoded_label
