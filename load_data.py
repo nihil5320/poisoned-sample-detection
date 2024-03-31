@@ -39,7 +39,8 @@ def load_dataset(folder_path, image_size):
 # and resizes it if needed to a fixed shape.
 def parse_image(filename, image_size):
     label = tf.strings.split(filename, os.sep)[-2]
-    encoded_label = tf.cast(label == 'original', tf.float32)
+    # probably want a mapping function at some point but for now original=0, poisoned=1
+    encoded_label = tf.cast(label == 'poisoned', tf.int32)
     
     # read and decode the file
     image = tf.io.read_file(filename)
@@ -50,7 +51,7 @@ def parse_image(filename, image_size):
     h, w = shape[0], shape[1]
     if h!=image_size or w!=image_size:
         # for some reason these output float32, whilst the decode uses uint8
-        # we'll stick with uint8 to save some vram
+        # we'll stick with uint8 to save some memory
         image = tf.image.resize_with_crop_or_pad(image, image_size, image_size)
         #image = tf.image.resize(image, (image_size, image_size))
         image = tf.image.convert_image_dtype(image, tf.uint8)

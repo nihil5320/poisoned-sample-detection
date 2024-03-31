@@ -96,32 +96,25 @@ def eval_model(model_name, model, hist, val_ds, test_ds):
     # return the results against test data
     return results
 
-def display_samples(display_ds, grid_shape=(4, 4)):
+def display_samples(display_ds, class_map, grid_shape=(4, 4)):
     """
     Displays images from a dataset in a grid of the specified dimensions
     
     Args:
         dataset (dataset): dataset iterator
+        class_map (dict): dict containing mapping from class IDs to string name
         grid_shape (tuple, optional): _description_. Defaults to (4, 4).
     """
-    # Create an iterator over the dataset
-    iterator = iter(display_ds)
-
-    # Create a figure and axes
+    # create us some subplots    
     fig, axes = plt.subplots(*grid_shape, figsize=(10, 10))
-
-    # Iterate over the axes and plot samples
-    for ax in axes.flatten():
-        # Get the next batch of samples
-        try:
-            image_batch = next(iterator)
-        except StopIteration:
-            break
-
-        # Plot each image in the batch
-        for image in image_batch:
-            ax.imshow(image.numpy().astype('uint8'))
-            ax.axis('off')
-            break  # Only display one image per subplot
+    
+    # create an iterator over the dataset
+    samples = [(image.numpy(), label.numpy()) for image, label in display_ds.take(len(axes.flatten()))]
+    
+    # create / populate figure and axes
+    for i, ax in enumerate(axes.flatten()):
+        ax.imshow(samples[i][0].astype('uint8'))
+        ax.set_title(class_map[samples[i][1]])
+        ax.axis('off')
     plt.tight_layout()
     plt.show()
