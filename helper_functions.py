@@ -1,9 +1,20 @@
 from IPython.display import HTML, display
 
 import tensorflow as tf
-
 import matplotlib.pyplot as plt
-from mpl_toolkits.axes_grid1 import ImageGrid
+
+# set up some more detailed metrics, code from Evaluating_models_with_precision_and_recall.ipynb
+METRICS = [
+      lambda : tf.keras.metrics.TruePositives(name='tp'),
+      lambda : tf.keras.metrics.FalsePositives(name='fp'),
+      lambda : tf.keras.metrics.TrueNegatives(name='tn'),
+      lambda : tf.keras.metrics.FalseNegatives(name='fn'), 
+
+      lambda : tf.keras.metrics.BinaryAccuracy(name='accuracy'),
+      lambda : tf.keras.metrics.Precision(name='precision'),
+      lambda : tf.keras.metrics.Recall(name='recall'),
+      lambda : tf.keras.metrics.AUC(name='auc'),
+]
 
 # set up plotting the training history as a helper function to save repeating it later
 def plot_history(history, model_name):
@@ -57,19 +68,6 @@ def pretty_cm(cm, class_names):
     result_table += "</table>"
     # print(result_table)
     display(HTML(result_table))
-
-# set up some more detailed metrics, code from Evaluating_models_with_precision_and_recall.ipynb
-METRICS = [
-      lambda : tf.keras.metrics.TruePositives(name='tp'),
-      lambda : tf.keras.metrics.FalsePositives(name='fp'),
-      lambda : tf.keras.metrics.TrueNegatives(name='tn'),
-      lambda : tf.keras.metrics.FalseNegatives(name='fn'), 
-
-      lambda : tf.keras.metrics.BinaryAccuracy(name='accuracy'),
-      lambda : tf.keras.metrics.Precision(name='precision'),
-      lambda : tf.keras.metrics.Recall(name='recall'),
-      lambda : tf.keras.metrics.AUC(name='auc'),
-]
 
 def fresh_metrics():
     return [metric() for metric in METRICS]           
