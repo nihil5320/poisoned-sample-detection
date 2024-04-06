@@ -19,8 +19,8 @@
         "--ulimit=stack=67108864"
     ],
 
-    // will use this once we have some depencies
-    "postCreateCommand": "pip3 install --user -r requirements.txt",
+    // install requirements then register details for git
+    "postCreateCommand": "pip install --user -r requirements.txt && git config --global user.email 'mpcowell@googlemail.com' && git config --global user.name 'Matthew Cowell'",
 
     // install some extensions
     // in the future might want to add elazarcoh.simply-view-image-for-python-debugging, if I end up moving away from Jupyter

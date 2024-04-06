@@ -33,23 +33,23 @@ class CustomHyperModel(kt.HyperModel):
         """
         # first we'll sort out the variables we'll need to build our model
         # learning rate
-        hp_lr = hp.Float("learning_rate", min_value=1e-6, max_value=0.1, step=5, sampling="log")
+        hp_lr = hp.Float("learning_rate", min_value=1e-8, max_value=0.01, step=2, sampling="log")
         # data augmentation, this is a bit overkill but I'm interested in seeing how/if this impacts accuracy
         hp_augnorm = hp.Boolean('aug_norm')
         hp_augflip = hp.Boolean('aug_flip')
-        hp_augrotate = hp.Float('aug_rotate', min_value=0, max_value=0.3, step=0.05)
+        hp_augrotate = hp.Float('aug_rotate', min_value=0, max_value=0.5, step=0.1)
         # size of the first conv layer
-        hp_conv1 = hp.Int('conv1_size', min_value=64, max_value=192, step=64)
+        hp_conv1 = hp.Int('conv1_size', min_value=8, max_value=256, step=2, sampling="log")
         # do we want to use skip connections for the middle layers?
         hp_residual = hp.Boolean('residual_connections')
         # now how many times do we want to repeat those layers in that middle block?
         hp_midblocks = hp.Int('midblock_repetitions', min_value=1, max_value=3, step=1)
         # now decide how big we want each of these blocks to be
-        hp_midblock1 = hp.Int('midblock_1_size', min_value=256, max_value=512, step=128, parent_name='midblock_repetitions', parent_values=[1,2,3])
+        hp_midblock1 = hp.Int('midblock_1_size', min_value=256, max_value=768, step=128, parent_name='midblock_repetitions', parent_values=[1,2,3])
         hp_midblock2 = hp.Int('midblock_2_size', min_value=256, max_value=768, step=128, parent_name='midblock_repetitions', parent_values=[2,3])
         hp_midblock3 = hp.Int('midblock_3_size', min_value=256, max_value=768, step=128, parent_name='midblock_repetitions', parent_values=[3])
         # size of the final conv layer
-        hp_conv2 = hp.Int('final_conv_size', min_value=256, max_value=1280, step=256)
+        hp_conv2 = hp.Int('final_conv_size', min_value=768, max_value=1536, step=128)
         # lastly we'll just set the dropout
         hp_dropout = hp.Float('dropout', min_value=0, max_value=0.4, step=0.05)
         
