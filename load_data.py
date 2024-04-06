@@ -6,7 +6,7 @@ from helper_functions import display_samples
 # see https://www.tensorflow.org/guide/data
 
 # get all the jpg files and load them into test, train and validation datasets
-def load_datasets(folder_path, class_map, image_size=512, batch_size=None, preview=False):
+def load_datasets(folder_path, class_map, batch_size, image_size=512, preview=False):
     """
     Takes a path to a dataset folder and optionally an image size if we want to resize our image (cannot change aspect ratio).
     
@@ -15,8 +15,8 @@ def load_datasets(folder_path, class_map, image_size=512, batch_size=None, previ
     Args:
         folder_path (string): Path to root folder, subfolders should be the individual datasets we will load (e.g. test, validation, training)
         class_map (dict): Dict of expected classes where the key is a sequentially increasing integer, this should match the classes in the folders below test/train/validation
+        batch_size (int): Desired batch size
         image_size (int, optional): Desired image size as a single int, defaults to 512 which will produce 512x512 images
-        batch_size (int, optional): Desired batch size, if provided
         preview (bool, optional): Flag to indicate whether you'd like to print a selection of one of the datasets as a preview
 
     Returns:
@@ -27,39 +27,37 @@ def load_datasets(folder_path, class_map, image_size=512, batch_size=None, previ
     dirs = [d for d in os.listdir(folder_path) if os.path.isdir(os.path.join(folder_path, d))]
     
     # load datasets for all the subdirectories
-    ds = {d: load_dataset(os.path.join(folder_path,d,'*/*'),image_size) for d in dirs}
+    ds = {d: load_dataset(os.path.join(folder_path,d,'*/*'),image_size, batch_size) for d in dirs}
     
     # generate preview if we've been asked to, only want to do this for one ds so just take the first
     if preview:
         for name, data in ds.items():
             print(f"Generating preview for dataset '{name}' located in '{folder_path}'.")
-            display_samples(data,class_map)
+            display_samples(data.unbatch(),class_map)
             break
-    
-    # if we've been asked to batch everything...
-    if batch_size:
-        for d in ds:
-            ds[d] = ds[d].batch(batch_size).cache().prefetch(tf.data.AUTOTUNE)
     
     return ds
 
 
-def load_dataset(folder_path, image_size):
+def load_dataset(folder_path, image_size, batch_size):
     
-    # first we want to invert the class_map, so we can lookup the expected encoding from the directory name
-    #keys,values = class_map.items()
-    #map_class = tf.contrib.lookup.HashTable(
-    #    tf.contrib.lookup.KeyValueTensorInitializer(values, keys), -1
-    #)
+    # see https://www.tensorflow.org/guide/data_performance
     
     # get a list of all the files in this dataset folder and subdirectories
     list_ds = tf.data.Dataset.list_files(folder_path)
     
     # now we want iterate over that list of files and map them to a new ds
-    built_ds = list_ds.shuffle(list_ds.cardinality()).map(
+    built_ds = (
+        list_ds
+        .shuffle(list_ds.cardinality())
+        .map(
             lambda x: parse_image(x, image_size),
             num_parallel_calls=tf.data.AUTOTUNE
         )
+        .cache()
+        .batch(batch_size)
+        .prefetch(tf.data.AUTOTUNE)
+    )
     return built_ds
 
 # Reads an image from a file, decodes it into a dense tensor

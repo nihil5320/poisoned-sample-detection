@@ -1,3 +1,6 @@
-130kv2
+130kv2/
+!datasets/
 datasets/*
+!autotune/
 autotune/*
+__pycache__/*
