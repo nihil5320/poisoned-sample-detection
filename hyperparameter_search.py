@@ -31,7 +31,11 @@ class CustomHyperModel(kt.HyperModel):
         Returns:
             model: model built to conform to the specification provided in the hyperparameter file
         """
-        # first we'll sort out the variables we'll need to build our model
+        # first clearing session data to stop memory usage accruing between trials
+        # see: https://github.com/keras-team/keras-tuner/issues/395 / https://www.tensorflow.org/api_docs/python/tf/keras/backend/clear_session
+        tf.keras.backend.clear_session()
+        
+        # now we can sort out the variables we'll need to build our model
         # learning rate
         hp_lr = hp.Float("learning_rate", min_value=1e-8, max_value=0.01, step=2, sampling="log")
         # data augmentation, this is a bit overkill but I'm interested in seeing how/if this impacts accuracy
@@ -39,7 +43,7 @@ class CustomHyperModel(kt.HyperModel):
         hp_augflip = hp.Boolean('aug_flip')
         hp_augrotate = hp.Float('aug_rotate', min_value=0, max_value=0.5, step=0.1)
         # size of the first conv layer
-        hp_conv1 = hp.Int('conv1_size', min_value=8, max_value=256, step=2, sampling="log")
+        hp_conv1 = hp.Int('conv1_size', min_value=8, max_value=128, step=2, sampling="log")
         # do we want to use skip connections for the middle layers?
         hp_residual = hp.Boolean('residual_connections')
         # now how many times do we want to repeat those layers in that middle block?
@@ -53,7 +57,7 @@ class CustomHyperModel(kt.HyperModel):
         # lastly we'll just set the dropout
         hp_dropout = hp.Float('dropout', min_value=0, max_value=0.4, step=0.05)
         
-        # now we'll chuck all of this at a model constructor
+        # and chuck all of this at a model constructor
         model = self.model_builder(
             hp_lr,
             hp_augnorm,

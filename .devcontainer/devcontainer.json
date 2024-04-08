@@ -5,7 +5,7 @@
     "name": "TM470 Project",
     
     // image to use
-    "image": "nvcr.io/nvidia/tensorflow:24.02-tf2-py3",
+    "image": "nvcr.io/nvidia/tensorflow:24.03-tf2-py3",
 
     // launch arguments for docker
     "runArgs": [

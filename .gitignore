@@ -1,6 +1,7 @@
-130kv2/
-!datasets/
 datasets/*
-!autotune/
+!datasets/
 autotune/*
+!autotune/
 __pycache__/*
+.devcontainer/*
+tblogs/*

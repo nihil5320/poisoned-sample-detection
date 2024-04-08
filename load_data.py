@@ -32,7 +32,7 @@ def load_datasets(folder_path, class_map, batch_size, image_size=512, preview=Fa
     # generate preview if we've been asked to, only want to do this for one ds so just take the first
     if preview:
         for name, data in ds.items():
-            print(f"Generating preview for dataset '{name}' located in '{folder_path}'.")
+            print(f"Generating preview for dataset '{name}' located in '{folder_path}':")
             display_samples(data.unbatch(),class_map)
             break
     
@@ -49,12 +49,12 @@ def load_dataset(folder_path, image_size, batch_size):
     # now we want iterate over that list of files and map them to a new ds
     built_ds = (
         list_ds
-        .shuffle(list_ds.cardinality())
         .map(
             lambda x: parse_image(x, image_size),
             num_parallel_calls=tf.data.AUTOTUNE
         )
         .cache()
+        .shuffle(list_ds.cardinality())
         .batch(batch_size)
         .prefetch(tf.data.AUTOTUNE)
     )
