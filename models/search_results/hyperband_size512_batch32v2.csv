@@ -1,0 +1,6 @@
+learning_rate,aug_norm,aug_flip,aug_rotate,conv1_size,residual_connections,midblock_repetitions,midblock_1_size,final_conv_size,dropout,tuner/epochs,tuner/initial_epoch,tuner/bracket,tuner/round,val_accuracy,midblock_2_size,midblock_3_size,tuner/trial_id
+0.00065536,False,True,0.0,16,False,1,256,1152,0.30000000000000004,50,0,0,0,0.9969696998596191,,,
+0.00032768,False,True,0.2,64,False,3,512,768,0.05,50,0,0,0,0.9962121248245239,384,384,
+0.00032768,False,True,0.0,32,False,1,640,1408,0.2,17,0,1,0,0.9946969747543335,,,
+0.00016384,False,False,0.0,128,False,1,640,1408,0.0,50,17,1,1,0.9946969747543335,,,0056
+0.00065536,True,True,0.0,8,True,2,640,1024,0.30000000000000004,50,17,1,1,0.9931818246841431,384,,0057

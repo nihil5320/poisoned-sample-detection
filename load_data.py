@@ -72,12 +72,12 @@ def parse_image(filename, image_size):
     image = tf.io.read_file(filename)
     image = tf.io.decode_jpeg(image,channels=3)
 
-    # resize it if we need to
+    # resize it if the image dimensions differ to those provided by image_size
     shape = tf.shape(image)
     h, w = shape[0], shape[1]
     if h!=image_size or w!=image_size:
-        # note resize outputs float32 unless we use nearest neighbour, whilst decode_jpeg uses uint8
         image = tf.image.resize_with_crop_or_pad(image, image_size, image_size)
+        # note resize outputs float32 unless we use nearest neighbour, whilst decode_jpeg uses uint8, so requires conversion
         # image = tf.image.resize(image, (image_size, image_size))
         # image = tf.image.convert_image_dtype(image, tf.uint8)
 
