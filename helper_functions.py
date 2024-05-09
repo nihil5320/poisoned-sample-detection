@@ -139,7 +139,11 @@ def serialise_hpsearch(tuner,num_to_save=5,save_folder='models/search_results/')
     # using the below method so we can also include the score
     results = []
     for r in tuner.oracle.get_best_trials(num_to_save):
-        x = r.hyperparameters.values
+        # include the file for when/if we merge these
+        x = {"trial": filename.split('/')[-1].split('.')[0]}
+        # we want the hyperparameter values
+        x.update(r.hyperparameters.values)
+        # and the models score
         x.update({tuner.oracle.objective.name: r.score})
         results.append(x)
     
@@ -153,5 +157,5 @@ def serialise_hpsearch(tuner,num_to_save=5,save_folder='models/search_results/')
         # and iterate over the items in the list
         dict_writer.writerows(results)
     
-    # confirm results save
+    # confirm results saved
     print(f'\nTop {num_to_save} results saved to: {filename}')

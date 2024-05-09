@@ -1,6 +1,0 @@
-learning_rate,aug_norm,aug_flip,aug_rotate,conv1_size,residual_connections,midblock_repetitions,midblock_1_size,midblock_2_size,final_conv_size,dropout,val_accuracy
-0.00065536,True,True,0.0,32,False,2,448,512,896,0.4,0.9212121367454529
-0.00016384,False,True,0.4,192,False,2,384,640,1024,0.05,0.8189393877983093
-0.00032768,False,True,0.30000000000000004,32,False,1,256,,256,0.2,0.7924242615699768
-0.00065536,True,True,0.0,32,False,2,448,512,896,0.4,0.7454545497894287
-0.00065536,False,False,0.1,160,True,1,384,,1152,0.15000000000000002,0.6621212363243103

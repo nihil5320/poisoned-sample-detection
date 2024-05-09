@@ -100,7 +100,7 @@ class CustomHyperModel(kt.HyperModel):
             hp_dropout (float): value for the dropout layer 
 
         Returns:
-            _type_: _description_
+            model: model as described by the provided arguments
         """
         # add some minor augmentation, ideally avoiding anything which might rescale or otherwise impact perturbations
         if (hp_augnorm or hp_augflip or hp_augrotate):
