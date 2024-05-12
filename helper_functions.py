@@ -1,9 +1,6 @@
-from IPython.display import HTML, display
-
 import tensorflow as tf
 import matplotlib.pyplot as plt
-import csv
-import os
+import numpy as np
 
 # set up some more detailed metrics, code from Evaluating_models_with_precision_and_recall.ipynb
 METRICS = [
@@ -46,31 +43,6 @@ def plot_history(history, model_name):
     plt.legend()  # Automatic detection of elements to be shown in the legend
     plt.show()
 
-# and the pretty_cm function from earlier in the block
-def pretty_cm(cm, class_names):
-    ncols = len(class_names) + 2
-    result_table  = '<h3>Confusion matrix</h3>\n'
-    result_table += '<table border=1>\n'
-    result_table += f'<tr><td>&nbsp;</td><td>&nbsp;</td><th colspan={ncols}>Predicted labels</th></tr>\n'
-    result_table += '<tr><td>&nbsp;</td><td>&nbsp;</td>'
-
-    for cn in class_names:
-        result_table += f'<td><strong>{class_names[cn]}</strong></td>'
-    result_table += '</tr>\n'
-
-    result_table += '<tr>\n'
-    result_table += f'<th rowspan={ncols}>Actual labels</th>\n'
-
-    for ai, an in enumerate(class_names):
-        result_table += '<tr>\n'
-        result_table += f'  <td><strong>{class_names[an]}</strong></td>\n'
-        for pi, pn in enumerate(class_names):
-            result_table += f'  <td>{cm[ai, pi]}</td>\n'
-        result_table += '</tr>\n'
-    result_table += "</table>"
-    # print(result_table)
-    display(HTML(result_table))
-
 def fresh_metrics():
     return [metric() for metric in METRICS]           
 
@@ -83,9 +55,7 @@ def eval_model(model_name, model, hist, val_ds, test_ds):
     # recompile the model with fresh_metrics
     model.compile(metrics=fresh_metrics())
     
-    # then summarise and evaluate on validation/test data
-    print(f"{model_name} summary")
-    model.summary()
+    # then evaluate on validation/test data and summarise
     print(f"\n{model_name} evaluation on validation data")
     results = model.evaluate(val_ds, return_dict=True, verbose=0)
     [print(f"{metric}: {score}") for metric,score in results.items()] 
@@ -119,43 +89,95 @@ def display_samples(display_ds, class_map, grid_shape=(4, 4)):
     plt.tight_layout()
     plt.show()
 
-# function to write a list of dicts to CSV, mostly for serialising found HP configurations
-def serialise_hpsearch(tuner,num_to_save=5,save_folder='models/search_results/'):
+def show_incorrect_predictions(model, dataset, class_map, num_to_display=16):
     """
-    Takes a keras tuner object as an argument and will save the top x results to a CSV file.
+    Takes a model and a dataset, makes predictions against the dataset and shows the first 16 samples where the prediction was incorrect.
     
-    Filename will match the project name given to the tuner object, folder by default will be 'models/search_results'.
-    
-    If updating save location folder must exist!
+    The samples will be displayed in a grid format with the predicted and actual labels. If num_to_display is higher than the number of incorrect predictions it will begin to display correct predictions.
 
     Args:
-        tuner (tune): keras tuner object
-        num_to_save (int, optional): number of records to save. Defaults to 5.
-        save_folder (str, optional): folder in which to output csv. Defaults to 5.
+        model (tensorflow model): Model to be used for prediction
+        dataset (tensorflow dataset): Dataset that predictions will be made against
+        num_to_display (int): Number of incorrect samples to display
     """
-    # set up the filename based on the project name
-    filename=os.path.join(save_folder,f'{tuner.project_name}.csv')
+    # the below code has been adapted from TM358: CNN_01_MNIST.ipynb
+    false_positive = []
+    false_negative = []
+    correct = []
+    #test_predictions = model.predict(dataset)    
+    #predict_labels = np.argmax(test_predictions, axis=1)
+    #test_labels = np.concatenate([y for x, y in dataset], axis=0)
+    for image, label in dataset.unbatch():
+        image = tf.expand_dims(image,0)
+        prediction = model.predict(image, verbose=0)
+        score = float(tf.keras.ops.sigmoid(prediction[0][0]))
+        print(score)
+        print(label.numpy())
+        #print(test_predictions)
+        #predict_labels = np.argmax(test_predictions, axis=1)
+        #print(predict_labels)
+        #predict_labels.extend(np.argmax(test_predictions, -1))
+        #test_labels.extend(label.numpy())
+
+    #print(predict_labels)
+    #print(test_labels)
+    #print(test_labels)
     
-    # using the below method so we can also include the score
-    results = []
-    for r in tuner.oracle.get_best_trials(num_to_save):
-        # include the file for when/if we merge these
-        x = {"trial": filename.split('/')[-1].split('.')[0]}
-        # we want the hyperparameter values
-        x.update(r.hyperparameters.values)
-        # and the models score
-        x.update({tuner.oracle.objective.name: r.score})
-        results.append(x)
+    """
+    # View the true and predicted labels of sample images
+    false_positives = []
+    false_negatives = []
+    correct_predictions = []
+    for images, labels in dataset:
+        test_predictions = model.predict_on_batch(images)
+        predict_labels = np.argmax(test_predictions, axis=1)
+        for i in range(len(predict_labels)):
+            p_class = predict_labels[i]
+            a_class = np.argmax(labels, axis=1)
+            print(p_class)
+            print(a_class[i])
+            if a_class != p_class:
+                if class_map[a_class[i]] == 'Original':
+                    false_positives.append((images[i].numpy(),p_class,a_class[i]))
+                else:
+                    false_negatives.append((images[i].numpy(),p_class,a_class[i]))
+            else:
+                correct_predictions.append((images[i].numpy(),p_class,a_class[i]))
+        
+    print(len(false_positives))
+    print(len(false_negatives))
+    print(len(correct_predictions))
+    """
     
-    # lastly create the file
-    with open(filename, 'w', newline='') as output_file:
-        # get a list of all keys first
-        headings = [k for k in {k:None for d in results for k in d}]
-        # now write out the headings
-        dict_writer = csv.DictWriter(output_file, headings)
-        dict_writer.writeheader()
-        # and iterate over the items in the list
-        dict_writer.writerows(results)
+    """
+    for i in range(len(predict_labels)):
+        p_class = predict_labels[i]
+        a_class = np.argmax(test_labels[i])
+        if a_class != p_class:
+            if class_map[test_labels[i]] == 'Original':
+                false_positives.append((test_imgs[i],p_class,a_class))
+            else:
+                false_negatives.append((test_imgs[i],p_class,a_class))
+        else:
     
-    # confirm results saved
-    print(f'\nTop {num_to_save} results saved to: {filename}')
+    print(len(false_positives))
+    print(len(false_negatives))
+    print(len(correct_predictions))
+    
+    plt.figure(figsize=(15,10))
+    for i in range(len(false_positives)):
+        img = false_positives[0]
+        p_class = false_positives[1]
+        a_class = false_positives[2]
+        plt.subplot(4,4,i+1)
+        plt.xticks([])
+        plt.yticks([])
+        plt.grid(False)
+        plt.imshow(img, cmap=plt.cm.binary)
+        p_class = predict_labels[i]
+        a_class = np.argmax(test_labels[i])
+        plt.title(f"P: {class_map[p_class]} (A: {class_map[a_class]})",
+                                    color=("green" if p_class == a_class else "red"))
+    plt.show()
+            correct_predictions.append((test_imgs[i],p_class,a_class))
+    """
