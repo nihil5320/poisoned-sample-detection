@@ -1,5 +1,6 @@
 import keras_tuner as kt
 import tensorflow as tf
+import gc
 
 class CustomHyperModel(kt.HyperModel):
     """
@@ -8,16 +9,14 @@ class CustomHyperModel(kt.HyperModel):
         
         This needs to be done as a class so we can give it the input shape/class data when initialising, could hardcode this but would suck when testing resizing
     """
-    def __init__(self, input_shape, num_classes):
+    def __init__(self, input_shape):
         """
-        Need to give it the expected input shape for the dataset and number of classes (should be 2)
+        CustomHyperModel for Keras Tuner, takes expected input shape as argument and implements the build method to return a compiled model based on provided hyperparameters.
 
         Args:
             input_shape (tensor): input shape, e.g. (512,512,3)
-            num_classes (int): number of classes
         """
         self.input_shape = input_shape
-        self.num_classes = num_classes
     
     def build(self, hp):
         """
@@ -34,6 +33,7 @@ class CustomHyperModel(kt.HyperModel):
         # first clearing session data to stop memory usage accruing between trials
         # see: https://github.com/keras-team/keras-tuner/issues/395 / https://www.tensorflow.org/api_docs/python/tf/keras/backend/clear_session
         tf.keras.backend.clear_session()
+        gc.collect()
         
         # now we can sort out the variables we'll need to build our model
         params = {
@@ -43,7 +43,7 @@ class CustomHyperModel(kt.HyperModel):
             "normalisation": hp.Boolean('normalisation'),
             "flip_augmentation": hp.Boolean('flip_augmentation'),
             "rotate_augmentation": hp.Float('rotate_augmentation', min_value=0, max_value=0.5, step=0.1),
-            # size of the first conv layer
+            # filters in the first conv layer
             "conv1_size": hp.Int('conv1_size', min_value=8, max_value=128, step=2, sampling="log"),
             # do we want to use skip connections for the middle layers?
             "residual_connections": hp.Boolean('residual_connections'),
@@ -53,7 +53,7 @@ class CustomHyperModel(kt.HyperModel):
             "midblock_1_size": hp.Int('midblock_1_size', min_value=256, max_value=768, step=128, parent_name='midblock_repetitions', parent_values=[1,2,3]),
             "midblock_2_size": hp.Int('midblock_2_size', min_value=256, max_value=768, step=128, parent_name='midblock_repetitions', parent_values=[2,3]),
             "midblock_3_size": hp.Int('midblock_3_size', min_value=256, max_value=768, step=128, parent_name='midblock_repetitions', parent_values=[3]),
-            # size of the final conv layer
+            # filters in the final conv layer
             "final_conv_size": hp.Int('final_conv_size', min_value=768, max_value=1536, step=128),
             # lastly we'll just set the dropout
             "dropout": hp.Float('dropout', min_value=0, max_value=0.4, step=0.05),
@@ -73,17 +73,17 @@ class CustomHyperModel(kt.HyperModel):
             normalisation (bool): flag indicating whether a norm layer is to be included in data augmentation
             flip_augmentation (bool): flag indicating whether a random horizontal and vertical flip layer will be included in data augmentation
             rotate_augmentation (float): maximum degree of random rotation for augmentation, 0 indicates rotation layer will be excluded
-            conv1_size (int): size of the first convolutional layer
+            conv1_size (int): number of filters in the first convolutional layer
             residual_connections (bool): flag indicating whether we are to use residual connections, these will go from the end to the start of the "midblocks"
             midblock_repetitions (int): This is the number of times we will repeate the middle block of convolutional layers (block consists of two SeparableConv2D with activation and batch norm layers plus a final pooling layer)
-            midblock_1_size (int): number of units in the convolutional layers in the first iteration of the middle block(s)
-            midblock_2_size (int): number of units in the convolutional layers in the second iteration of the middle block(s)
-            midblock_3_size (int): number of units in the convolutional layers in the third iteration of the middle block(s)
-            final_conv_size (int): size of the final convolutional layer
+            midblock_1_size (int): number of filters in the convolutional layers in the first iteration of the middle block(s)
+            midblock_2_size (int): number of filters in the convolutional layers in the second iteration of the middle block(s)
+            midblock_3_size (int): number of filters in the convolutional layers in the third iteration of the middle block(s)
+            final_conv_size (int): filters in the final convolutional layer
             dropout (float): value for the dropout layer 
 
         Returns:
-            model: model as described by the provided arguments
+            model: compiled model configured as described in the provided arguments
         """
         # add some minor augmentation, ideally avoiding anything which might rescale or otherwise impact perturbations
         if (normalisation or flip_augmentation or rotate_augmentation):
@@ -102,15 +102,12 @@ class CustomHyperModel(kt.HyperModel):
         # Entry block
         if (normalisation or flip_augmentation or rotate_augmentation):
             x = data_augmentation_layers(inputs)
-            x = tf.keras.layers.Rescaling(1. / 255)(x) # might want to comment this out if we do it in pre
+            x = tf.keras.layers.Rescaling(1. / 255)(x) # need to comment this out if we do it in pre
         else:
-            x = tf.keras.layers.Rescaling(1. / 255)(inputs) # might want to comment this out if we do it in pre
+            x = tf.keras.layers.Rescaling(1. / 255)(inputs) # need to comment this out if we do it in pre
         x = tf.keras.layers.Conv2D(conv1_size, 3, strides=2, padding="same")(x)
         x = tf.keras.layers.BatchNormalization()(x)
         x = tf.keras.layers.Activation("relu")(x)
-
-        # add another pooling layer to help with model size
-        # x = tf.keras.layers.MaxPooling2D(hp_kernel2, strides=2, padding="same")(x)
 
         if residual_connections:
             previous_block_activation = x  # Set aside residual
@@ -140,25 +137,21 @@ class CustomHyperModel(kt.HyperModel):
         x = tf.keras.layers.BatchNormalization()(x)
         x = tf.keras.layers.Activation("relu")(x)
 
-        x = tf.keras.layers.GlobalAveragePooling2D()(x)
-        if self.num_classes == 2:
-            units = 1
-        else:
-            units = self.num_classes
-
         # no point adding this if the dropout is 0.
         if dropout:
             x = tf.keras.layers.Dropout(dropout)(x)
+
+        x = tf.keras.layers.GlobalAveragePooling2D()(x)
         
-        # We specify activation=None so as to return logits, dtype being set as we're using mixed precision
-        outputs = tf.keras.layers.Dense(units, dtype='float32', activation='softmax')(x)
+        # changed this to sigmoid, we're using mixed precision so also specifying dtype else it will be float16
+        outputs = tf.keras.layers.Dense(1, dtype='float32', activation='sigmoid')(x)
         
         model = tf.keras.Model(inputs, outputs)
 
-        # and compile the model before returning it, still using logits here instead of softmax as we may wish to utilise this later
+        # and compile the model before returning it
         model.compile(
             optimizer=tf.keras.optimizers.Adam(learning_rate),
-            loss=tf.keras.losses.BinaryCrossentropy(from_logits=True),
+            loss=tf.keras.losses.BinaryCrossentropy(),
             metrics=[tf.keras.metrics.BinaryAccuracy(name="accuracy")],
         )
 

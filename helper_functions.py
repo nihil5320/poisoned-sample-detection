@@ -78,106 +78,79 @@ def display_samples(display_ds, class_map, grid_shape=(4, 4)):
     # create us some subplots    
     fig, axes = plt.subplots(*grid_shape, figsize=(10, 10))
     
-    # create an iterator over the dataset
-    samples = [(image.numpy(), label.numpy()) for image, label in display_ds][:len(axes.flatten())]
-    
+    # iterate over the dataset until we've got enough samples
+    images = []
+    labels = []
+    for batch_images, batch_labels in display_ds:
+        images.extend(batch_images.numpy())
+        labels.extend(batch_labels.numpy())
+        if len(images) >= len(axes.flatten()):
+            break
+        
     # create / populate figure and axes
     for i, ax in enumerate(axes.flatten()):
-        ax.imshow(samples[i][0].astype('uint8'))
-        ax.set_title(class_map[samples[i][1]])
+        ax.imshow(images[i].astype('uint8'))
+        ax.set_title(class_map[labels[i]])
         ax.axis('off')
     plt.tight_layout()
     plt.show()
 
 def show_incorrect_predictions(model, dataset, class_map, num_to_display=16):
     """
-    Takes a model and a dataset, makes predictions against the dataset and shows the first 16 samples where the prediction was incorrect.
+    Method to take predictions against a dataset and display the resulting images with their predicted and actual classes.
     
-    The samples will be displayed in a grid format with the predicted and actual labels. If num_to_display is higher than the number of incorrect predictions it will begin to display correct predictions.
+    Prioritises displaying incorrect predictions and will alternate between false positives and false negatives. If it exhausts false positives it will display only false negatives and vice versa.
+    
+    Once all incorrect predictions have been displayed it will begin displaying correct predictions up to the number provided in num_to_display.
 
     Args:
-        model (tensorflow model): Model to be used for prediction
-        dataset (tensorflow dataset): Dataset that predictions will be made against
-        num_to_display (int): Number of incorrect samples to display
+        model (tensorflow model): Model to be used for prediction.
+        dataset (tensorflow dataset): Dataset that predictions will be made against.
+        class_map (dict): Dictionary containing the class map for the dataset.
+        num_to_display (int): Number of samples to display. Defaults to 16.
     """
     # the below code has been adapted from TM358: CNN_01_MNIST.ipynb
-    false_positive = []
-    false_negative = []
-    correct = []
-    #test_predictions = model.predict(dataset)    
-    #predict_labels = np.argmax(test_predictions, axis=1)
-    #test_labels = np.concatenate([y for x, y in dataset], axis=0)
-    for image, label in dataset.unbatch():
-        image = tf.expand_dims(image,0)
-        prediction = model.predict(image, verbose=0)
-        score = float(tf.keras.ops.sigmoid(prediction[0][0]))
-        print(score)
-        print(label.numpy())
-        #print(test_predictions)
-        #predict_labels = np.argmax(test_predictions, axis=1)
-        #print(predict_labels)
-        #predict_labels.extend(np.argmax(test_predictions, -1))
-        #test_labels.extend(label.numpy())
-
-    #print(predict_labels)
-    #print(test_labels)
-    #print(test_labels)
-    
-    """
-    # View the true and predicted labels of sample images
+    # first we will create lists of false positives, negatives and correct predictions
     false_positives = []
     false_negatives = []
     correct_predictions = []
-    for images, labels in dataset:
-        test_predictions = model.predict_on_batch(images)
-        predict_labels = np.argmax(test_predictions, axis=1)
-        for i in range(len(predict_labels)):
-            p_class = predict_labels[i]
-            a_class = np.argmax(labels, axis=1)
-            print(p_class)
-            print(a_class[i])
-            if a_class != p_class:
-                if class_map[a_class[i]] == 'Original':
-                    false_positives.append((images[i].numpy(),p_class,a_class[i]))
-                else:
-                    false_negatives.append((images[i].numpy(),p_class,a_class[i]))
+    # iterate over the dataset to populate these lists
+    for image_batch, labels in dataset:
+        # make predictions against this specific batch
+        predictions = model.predict(image_batch, verbose=0)
+        # get a numpy array of the images and round the prediction for comparison to the actual class
+        images = image_batch.numpy()
+        predicted_classes = [0 if p[0] < .5 else 1 for p in predictions.tolist()]
+        actual_classes = labels.numpy().tolist()
+        # zip each of the lists, figure out which list it needs to go in and append the data as a tuple
+        for image, predicted_class, actual_class in zip(images, predicted_classes, actual_classes):
+            if predicted_class == actual_class:
+                correct_predictions.append((image, predicted_class, actual_class))
+            elif class_map[predicted_class] == 'Original':
+                false_positives.append((image, predicted_class, actual_class))
             else:
-                correct_predictions.append((images[i].numpy(),p_class,a_class[i]))
-        
-    print(len(false_positives))
-    print(len(false_negatives))
-    print(len(correct_predictions))
-    """
+                false_negatives.append((image, predicted_class, actual_class))
     
-    """
-    for i in range(len(predict_labels)):
-        p_class = predict_labels[i]
-        a_class = np.argmax(test_labels[i])
-        if a_class != p_class:
-            if class_map[test_labels[i]] == 'Original':
-                false_positives.append((test_imgs[i],p_class,a_class))
-            else:
-                false_negatives.append((test_imgs[i],p_class,a_class))
-        else:
-    
-    print(len(false_positives))
-    print(len(false_negatives))
-    print(len(correct_predictions))
-    
+    # now we can start displaying the images
     plt.figure(figsize=(15,10))
-    for i in range(len(false_positives)):
-        img = false_positives[0]
-        p_class = false_positives[1]
-        a_class = false_positives[2]
+    for i in range(0,num_to_display):
+        # to alternate we're prioritising false_positives on even numbers, or where we have false_positives but false_negatives is empty
+        if (false_positives and i % 2 == 0) or (false_positives and not false_negatives):
+            img, predicted_class, actual_class = false_positives.pop()
+        # and the inverse for false_negatives
+        elif (false_negatives and i % 2 != 0) or (false_negatives and not false_positives):
+            img, predicted_class, actual_class = false_negatives.pop()
+        # lastly we'll display correct predictions
+        elif correct_predictions:
+            img, predicted_class, actual_class = correct_predictions.pop()
+        else:
+            print('Exhausted dataset after {i} samples.')        
+        # once we've decided which list to assign the variables from we can plot the image
         plt.subplot(4,4,i+1)
         plt.xticks([])
         plt.yticks([])
         plt.grid(False)
-        plt.imshow(img, cmap=plt.cm.binary)
-        p_class = predict_labels[i]
-        a_class = np.argmax(test_labels[i])
-        plt.title(f"P: {class_map[p_class]} (A: {class_map[a_class]})",
-                                    color=("green" if p_class == a_class else "red"))
+        plt.imshow(img.astype('uint8'))
+        plt.title(f"P: {class_map[predicted_class]} (A: {class_map[actual_class]})",
+                                    color=("green" if predicted_class == actual_class else "red"))
     plt.show()
-            correct_predictions.append((test_imgs[i],p_class,a_class))
-    """

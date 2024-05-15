@@ -1,4 +1,5 @@
 import tensorflow as tf
+import json
 import csv
 import os
 
@@ -91,34 +92,38 @@ def parse_image(filename, image_size, crop_and_pad):
 
     return image, encoded_label
 
-def save_hp_search(tuner,num_to_save=5,save_folder='results/search_results/'):
+def save_hp_search(tuner,runtime,num_to_save=5,save_folder='results/'):
     """
     Takes a keras tuner object as an argument and will save the top x results to a CSV file.
     
-    Filename will match the project name given to the tuner object, folder by default will be 'results/search_results'.
+    Filename will match the project name given to the tuner object, folder by default will be 'results/'.
     
     If updating save location folder must exist!
 
     Args:
         tuner (tune): keras tuner object
-        num_to_save (int, optional): number of records to save. Defaults to 5.
-        save_folder (str, optional): folder in which to output csv. Defaults to 'results/search_results'.
+        runtime (int): execution time for the trial in seconds, will not be saved if results for this trial already exist
+        num_to_save (int, optional): number of records to save. Defaults to 5
+        save_folder (str, optional): folder in which to output csv. Defaults to 'results/search_results'
     """
-    # set up the filename based on the project name
-    filename=os.path.join(save_folder,f'{tuner.project_name}.csv')
+    # set up the filename for this trial based on the project name
+    filename=os.path.join(save_folder,'search_results',f'{tuner.project_name}.csv')
     
     # using the below method so we can also include the score
     results = []
+    score = None
     for r in tuner.oracle.get_best_trials(num_to_save):
         # include the filename so we can differentiate them when/if we merge these
         x = {"trial": filename.split('/')[-1].split('.')[0]}
         # we want the hyperparameter values
         x.update(r.hyperparameters.values)
-        # and the models score
+        # and the models score, we'll also save this for the first result
+        if not score:
+            score = r.score
         x.update({tuner.oracle.objective.name: r.score})
         results.append(x)
     
-    # lastly create the file
+    # create the file
     with open(filename, 'w', newline='') as output_file:
         # get a list of all keys first
         headings = [k for k in {k:None for d in results for k in d}]
@@ -128,8 +133,19 @@ def save_hp_search(tuner,num_to_save=5,save_folder='results/search_results/'):
         # and iterate over the items in the list
         dict_writer.writerows(results)
     
-    # confirm results saved
-    print(f'\nTop {num_to_save} results saved to: {filename}')
+    filename=os.path.join(save_folder,'hpsearch_comparison.json')
+    trial_result = {tuner.project_name: {'score': score, 'runtime_seconds':runtime}}
+    # we'll save the overall results as json, need to update this as we go
+    if os.path.exists(filename):
+        results = json.load(open(filename, 'r'))
+        if tuner.project_name not in results.keys():
+            results.update(trial_result)
+            json.dump(results, open(filename, 'w'), indent="\t")
+            print(f'\nTop {num_to_save} results for {tuner.project_name} added to: {filename}')
+    else:
+        json.dump(trial_result, open(filename, 'w'), indent="\t")    
+        # confirm results saved
+        print(f'\nTop {num_to_save} results saved to: {filename}')
 
 def load_hp_searches(load_folder='results/search_results/',metric='val_accuracy'):
     """

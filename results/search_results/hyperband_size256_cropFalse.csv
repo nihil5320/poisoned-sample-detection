@@ -1,6 +1,6 @@
-trial,learning_rate,normalisation,flip_augmentation,rotate_augmentation,conv1_size,residual_connections,midblock_repetitions,midblock_1_size,midblock_2_size,midblock_3_size,final_conv_size,dropout,tuner/epochs,tuner/initial_epoch,tuner/bracket,tuner/round,val_accuracy,tuner/trial_id
-hyperband_size256_cropFalse,0.00262144,False,True,0.0,32,False,3,512,512,512,1024,0.35000000000000003,2,0,3,0,0.5181818008422852,
-hyperband_size256_cropFalse,0.00131072,True,True,0.30000000000000004,128,True,1,384,,,896,0.1,10,4,2,1,0.5113636255264282,0050
-hyperband_size256_cropFalse,0.00065536,True,True,0.1,128,True,2,256,256,,768,0.15000000000000002,4,0,2,0,0.5068181753158569,
-hyperband_size256_cropFalse,2e-08,False,True,0.4,64,False,1,640,,,768,0.1,30,10,1,1,0.5068181753158569,0060
-hyperband_size256_cropFalse,2e-08,False,True,0.4,64,False,1,640,,,768,0.1,10,0,1,0,0.5068181753158569,
+trial,learning_rate,normalisation,flip_augmentation,rotate_augmentation,conv1_size,residual_connections,midblock_repetitions,midblock_1_size,final_conv_size,dropout,tuner/epochs,tuner/initial_epoch,tuner/bracket,tuner/round,val_accuracy,tuner/trial_id,midblock_2_size
+hyperband_size256_cropFalse,0.00065536,False,True,0.0,128,False,1,640,1536,0.05,10,0,1,0,0.9371212124824524,,
+hyperband_size256_cropFalse,0.00065536,False,True,0.0,128,False,1,640,1536,0.05,30,10,1,1,0.9318181872367859,0133,
+hyperband_size256_cropFalse,8.192e-05,False,False,0.0,8,False,2,512,1152,0.05,30,0,0,0,0.9189394116401672,,512
+hyperband_size256_cropFalse,4.096e-05,True,False,0.4,8,False,2,768,1152,0.2,30,0,0,0,0.7977272868156433,,640
+hyperband_size256_cropFalse,0.00065536,True,True,0.4,8,False,2,768,768,0.25,30,10,1,1,0.7757575511932373,0066,256
