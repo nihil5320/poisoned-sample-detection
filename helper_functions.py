@@ -130,21 +130,25 @@ def show_incorrect_predictions(model, dataset, class_map, num_to_display=16):
                 false_positives.append((image, predicted_class, actual_class))
             else:
                 false_negatives.append((image, predicted_class, actual_class))
+        # stop early if we've got enough samples to draw our grid
+        if len(false_positives)+len(false_negatives)+len(correct_predictions) >= num_to_display:
+            break
     
     # now we can start displaying the images
-    plt.figure(figsize=(15,10))
+    plt.figure(figsize=(15, 10))
     for i in range(0,num_to_display):
         # to alternate we're prioritising false_positives on even numbers, or where we have false_positives but false_negatives is empty
-        if (false_positives and i % 2 == 0) or (false_positives and not false_negatives):
+        if false_positives and (i % 2 == 0 or not false_negatives):
             img, predicted_class, actual_class = false_positives.pop()
         # and the inverse for false_negatives
-        elif (false_negatives and i % 2 != 0) or (false_negatives and not false_positives):
+        elif false_negatives and (i % 2 != 0 or not false_positives):
             img, predicted_class, actual_class = false_negatives.pop()
         # lastly we'll display correct predictions
         elif correct_predictions:
             img, predicted_class, actual_class = correct_predictions.pop()
         else:
-            print('Exhausted dataset after {i} samples.')        
+            print('Exhausted dataset after {i} samples.')
+            break
         # once we've decided which list to assign the variables from we can plot the image
         plt.subplot(4,4,i+1)
         plt.xticks([])

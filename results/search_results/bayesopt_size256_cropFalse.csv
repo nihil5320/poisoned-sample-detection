@@ -1,6 +1,0 @@
-trial,learning_rate,normalisation,flip_augmentation,rotate_augmentation,conv1_size,residual_connections,midblock_repetitions,midblock_1_size,midblock_2_size,final_conv_size,dropout,val_accuracy
-bayesopt_size256_cropFalse,0.00032768,True,True,0.4,32,False,2,768,512,1280,0.35000000000000003,0.9454545378684998
-bayesopt_size256_cropFalse,0.00016384,False,True,0.0,64,False,1,640,,1408,0.1,0.8515151739120483
-bayesopt_size256_cropFalse,8.192e-05,False,False,0.0,8,False,2,512,512,1152,0.05,0.7628787755966187
-bayesopt_size256_cropFalse,8.192e-05,False,True,0.30000000000000004,64,False,2,256,256,1280,0.05,0.6977272629737854
-bayesopt_size256_cropFalse,8.192e-05,True,True,0.2,16,False,2,512,384,768,0.30000000000000004,0.564393937587738

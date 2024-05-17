@@ -61,6 +61,9 @@ class CustomHyperModel(kt.HyperModel):
         
         # and chuck all of this at the model constructor
         model = self.model_builder(**params)
+        
+        # we'll output the parameter count just for information purposes
+        print(f'Compiled model with {model.count_params()} parameters.')
 
         return model
     
@@ -85,7 +88,7 @@ class CustomHyperModel(kt.HyperModel):
         Returns:
             model: compiled model configured as described in the provided arguments
         """
-        # add some minor augmentation, ideally avoiding anything which might rescale or otherwise impact perturbations
+        # add some augmentation, ideally avoiding anything which might rescale or otherwise impact perturbations
         if (normalisation or flip_augmentation or rotate_augmentation):
             aug = []
             if normalisation:

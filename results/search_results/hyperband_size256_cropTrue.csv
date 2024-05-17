@@ -1,6 +1,0 @@
-trial,learning_rate,normalisation,flip_augmentation,rotate_augmentation,conv1_size,residual_connections,midblock_repetitions,midblock_1_size,midblock_2_size,final_conv_size,dropout,tuner/epochs,tuner/initial_epoch,tuner/bracket,tuner/round,val_accuracy,tuner/trial_id
-hyperband_size256_cropTrue,0.00065536,False,True,0.0,64,True,2,512,256,1024,0.25,30,0,0,0,0.9969696998596191,
-hyperband_size256_cropTrue,0.00131072,False,True,0.0,32,True,2,256,256,1152,0.2,10,4,2,1,0.9909090995788574,0122
-hyperband_size256_cropTrue,0.00065536,True,False,0.0,8,False,1,512,,1536,0.30000000000000004,10,4,2,1,0.8886363506317139,0126
-hyperband_size256_cropTrue,0.00131072,False,True,0.0,32,True,2,256,256,1152,0.2,4,0,2,0,0.7310606241226196,
-hyperband_size256_cropTrue,0.00065536,True,False,0.0,8,False,1,512,,1536,0.30000000000000004,4,0,2,0,0.706818163394928,
