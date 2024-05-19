@@ -22,7 +22,7 @@ class CustomHyperModel(kt.HyperModel):
         """
         Takes a Keras tuner hyperparameter object and returns a compiled model based on the provided hyperparameters.
         
-        Can be called to build the models for further training once a hyperparameter search has completed.
+        Can be called to build models for further training once a hyperparameter search has completed.
 
         Args:
             hp (hyperparameter): Keras tuner hyperparameter object
@@ -39,22 +39,21 @@ class CustomHyperModel(kt.HyperModel):
         params = {
             # learning rate
             "learning_rate": hp.Float("learning_rate", min_value=1e-8, max_value=0.01, step=2, sampling="log"),
-            # data augmentation, this is a bit overkill but I'm interested in seeing how/if this impacts accuracy
-            "normalisation": hp.Boolean('normalisation'),
+            # data augmentation
             "flip_augmentation": hp.Boolean('flip_augmentation'),
-            "rotate_augmentation": hp.Float('rotate_augmentation', min_value=0, max_value=0.5, step=0.1),
+            "rotate_augmentation": hp.Float('rotate_augmentation', min_value=0, max_value=0.3, step=0.1),
             # filters in the first conv layer
-            "conv1_size": hp.Int('conv1_size', min_value=8, max_value=128, step=2, sampling="log"),
+            "conv1_filters": hp.Int('conv1_filters', min_value=8, max_value=128, step=2, sampling="log"),
             # do we want to use skip connections for the middle layers?
             "residual_connections": hp.Boolean('residual_connections'),
             # now how many times do we want to repeat those layers in that middle block?
-            "midblock_repetitions": hp.Int('midblock_repetitions', min_value=1, max_value=3, step=1),
+            "block_repetitions": hp.Int('block_repetitions', min_value=1, max_value=3, step=1),
             # now decide how big we want each of these blocks to be
-            "midblock_1_size": hp.Int('midblock_1_size', min_value=256, max_value=768, step=128, parent_name='midblock_repetitions', parent_values=[1,2,3]),
-            "midblock_2_size": hp.Int('midblock_2_size', min_value=256, max_value=768, step=128, parent_name='midblock_repetitions', parent_values=[2,3]),
-            "midblock_3_size": hp.Int('midblock_3_size', min_value=256, max_value=768, step=128, parent_name='midblock_repetitions', parent_values=[3]),
+            "block_1_filters": hp.Int('block_1_filters', min_value=64, max_value=576, step=128, parent_name='block_repetitions', parent_values=[1,2,3]),
+            "block_2_filters": hp.Int('block_2_filters', min_value=128, max_value=640, step=128, parent_name='block_repetitions', parent_values=[2,3]),
+            "block_3_filters": hp.Int('block_3_filters', min_value=256, max_value=768, step=128, parent_name='block_repetitions', parent_values=[3]),
             # filters in the final conv layer
-            "final_conv_size": hp.Int('final_conv_size', min_value=768, max_value=1536, step=128),
+            "final_conv_filters": hp.Int('final_conv_filters', min_value=512, max_value=1024, step=128),
             # lastly we'll just set the dropout
             "dropout": hp.Float('dropout', min_value=0, max_value=0.4, step=0.05),
         }
@@ -67,57 +66,52 @@ class CustomHyperModel(kt.HyperModel):
 
         return model
     
-    def model_builder(self,learning_rate,normalisation,flip_augmentation,rotate_augmentation,conv1_size,residual_connections,midblock_repetitions,midblock_1_size,midblock_2_size,midblock_3_size,final_conv_size,dropout):
+    def model_builder(self,learning_rate,flip_augmentation,rotate_augmentation,conv1_filters,residual_connections,block_repetitions,block_1_filters,block_2_filters,block_3_filters,final_conv_filters,dropout):
         """
         Given a list of parameters will build and return an associated model, used during hyperparameter tuning or to recreate the models after the fact.
 
         Args:
             learning_rate (float): learning rate
-            normalisation (bool): flag indicating whether a norm layer is to be included in data augmentation
             flip_augmentation (bool): flag indicating whether a random horizontal and vertical flip layer will be included in data augmentation
             rotate_augmentation (float): maximum degree of random rotation for augmentation, 0 indicates rotation layer will be excluded
-            conv1_size (int): number of filters in the first convolutional layer
+            conv1_filters (int): number of filters in the first convolutional layer
             residual_connections (bool): flag indicating whether we are to use residual connections, these will go from the end to the start of the "midblocks"
-            midblock_repetitions (int): This is the number of times we will repeate the middle block of convolutional layers (block consists of two SeparableConv2D with activation and batch norm layers plus a final pooling layer)
-            midblock_1_size (int): number of filters in the convolutional layers in the first iteration of the middle block(s)
-            midblock_2_size (int): number of filters in the convolutional layers in the second iteration of the middle block(s)
-            midblock_3_size (int): number of filters in the convolutional layers in the third iteration of the middle block(s)
-            final_conv_size (int): filters in the final convolutional layer
+            block_repetitions (int): This is the number of times we will repeate the middle block of convolutional layers (block consists of two SeparableConv2D with activation and batch norm layers plus a final pooling layer)
+            block_1_filters (int): number of filters in the convolutional layers in the first iteration of the middle block(s)
+            block_2_filters (int): number of filters in the convolutional layers in the second iteration of the middle block(s)
+            block_3_filters (int): number of filters in the convolutional layers in the third iteration of the middle block(s)
+            final_conv_filters (int): filters in the final convolutional layer
             dropout (float): value for the dropout layer 
 
         Returns:
             model: compiled model configured as described in the provided arguments
         """
-        # add some augmentation, ideally avoiding anything which might rescale or otherwise impact perturbations
-        if (normalisation or flip_augmentation or rotate_augmentation):
+        inputs = tf.keras.Input(shape=self.input_shape)
+
+        if (flip_augmentation or rotate_augmentation):
+            # add some augmentation, ideally avoiding anything which might rescale or otherwise impact perturbations
             aug = []
-            if normalisation:
-                aug.append(tf.keras.layers.Normalization())
             if flip_augmentation:
                 aug.append(tf.keras.layers.RandomFlip("horizontal_and_vertical"))
             if rotate_augmentation:
                 aug.append(tf.keras.layers.RandomRotation(rotate_augmentation))
             data_augmentation_layers = tf.keras.Sequential(aug)
-
-        # now start building the model
-        inputs = tf.keras.Input(shape=self.input_shape)
-
-        # Entry block
-        if (normalisation or flip_augmentation or rotate_augmentation):
             x = data_augmentation_layers(inputs)
             x = tf.keras.layers.Rescaling(1. / 255)(x) # need to comment this out if we do it in pre
         else:
             x = tf.keras.layers.Rescaling(1. / 255)(inputs) # need to comment this out if we do it in pre
-        x = tf.keras.layers.Conv2D(conv1_size, 3, strides=2, padding="same")(x)
+        
+        # initial convolutional layer
+        x = tf.keras.layers.Conv2D(conv1_filters, 3, strides=2, padding="same")(x)
         x = tf.keras.layers.BatchNormalization()(x)
         x = tf.keras.layers.Activation("relu")(x)
 
         if residual_connections:
             previous_block_activation = x  # Set aside residual
 
-        # we'll iterate over and recreate this block for the 1-3 times specified by midblock_repetitions
-        mid_layers = [midblock_1_size, midblock_2_size, midblock_3_size]
-        for size in mid_layers[:midblock_repetitions]:
+        # we'll iterate over and recreate this block for the 1-3 times specified by block_repetitions
+        mid_layers = [block_1_filters, block_2_filters, block_3_filters]
+        for size in mid_layers[:block_repetitions]:
             x = tf.keras.layers.Activation("relu")(x)
             x = tf.keras.layers.SeparableConv2D(size, 3, padding="same")(x)
             x = tf.keras.layers.BatchNormalization()(x)
@@ -136,7 +130,7 @@ class CustomHyperModel(kt.HyperModel):
                 x = tf.keras.layers.add([x, residual])  # Add back residual
                 previous_block_activation = x  # Set aside next residual
 
-        x = tf.keras.layers.SeparableConv2D(final_conv_size, 3, padding="same")(x)
+        x = tf.keras.layers.SeparableConv2D(final_conv_filters, 3, padding="same")(x)
         x = tf.keras.layers.BatchNormalization()(x)
         x = tf.keras.layers.Activation("relu")(x)
 

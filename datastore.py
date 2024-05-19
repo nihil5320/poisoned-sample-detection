@@ -6,15 +6,14 @@ import os
 # see https://www.tensorflow.org/guide/data
 
 # get all the jpg files and load them into test, train and validation datasets
-def load_datasets(folder_path, class_map, batch_size, image_size=512, crop_and_pad=True):
+def load_datasets(folder_path, batch_size, image_size=512, crop_and_pad=True):
     """
-    Takes a path to a dataset folder and optionally an image size and resizing method if we want to resize our images (cannot change aspect ratio).
+    Takes a path to a dataset folder, batch size and optionally an image size and resizing method if we want to resize our images (cannot change aspect ratio).
     
-    Folder containing dataset should have train, test and validation folders in the root with the desired datasplit. Next level down folder should be the class names then the samples in jpg format beneath that.
+    Folder containing dataset should have train, test and validation folders in the root with the desired datasplit. Next level down folder should be the class names (poisoned or original) then the samples in jpg format beneath that.
 
     Args:
         folder_path (string): Path to root folder, subfolders should be the individual datasets we will load (e.g. test, validation, training)
-        class_map (dict): Dict of expected classes where the key is a sequentially increasing integer, this should match the classes in the folders below test/train/validation
         batch_size (int): Desired batch size
         image_size (int, optional): Desired image size as a single int, defaults to 512 which will produce 512x512 images
         crop_and_pad (bool): whether to crop and pad, if false resizes the images
@@ -55,27 +54,27 @@ def load_dataset(folder_path, batch_size, image_size, crop_and_pad):
 
 # Reads an image from a file, decodes it into a dense tensor
 # and resizes it if needed to a fixed shape.
-def parse_image(filename, image_size, crop_and_pad):
+def parse_image(filepath, image_size, crop_and_pad):
     """
     Takes a filepath to a jpg image and a desired size in pixels for the image (width and height will always be equal).
     
     Reads the image from disk and converts to tensor, assigns a label based on the path and applies crop/padding if necessary.
 
     Args:
-        filename (string): Filepath describing the location of the image on disk
+        filepath (string): Filepath describing the location of the image on disk
         image_size (int): A single integer that describes the desired height and width of the image
 
     Returns:
         image: tensor of shape (image_size, image_size, 3) containing the image
         encoded_label: label for classification, will be 1 for poisoned samples
     """
-    label = tf.strings.split(filename, os.sep)[-2]
+    label = tf.strings.split(filepath, os.sep)[-2]
     
     # probably want a mapping function at some point but for now original=0, poisoned=1
     encoded_label = tf.cast(label == 'poisoned', tf.int32)
     
     # read and decode the file
-    image = tf.io.read_file(filename)
+    image = tf.io.read_file(filepath)
     image = tf.io.decode_jpeg(image,channels=3)
 
     # resize it if the image dimensions differ to those provided by image_size
@@ -96,7 +95,7 @@ def save_hp_search(tuner,runtime,num_to_save=5,save_folder='results/'):
     """
     Takes a keras tuner object as an argument and will save the top x results to a CSV file.
     
-    Filename will match the project name given to the tuner object, folder by default will be 'results/'.
+    Filepath will match the project name given to the tuner object, folder by default will be 'results/'.
     
     If updating save location folder must exist!
 
@@ -106,15 +105,15 @@ def save_hp_search(tuner,runtime,num_to_save=5,save_folder='results/'):
         num_to_save (int, optional): number of records to save. Defaults to 5
         save_folder (str, optional): folder in which to output csv. Defaults to 'results/search_results'
     """
-    # set up the filename for this trial based on the project name
-    filename=os.path.join(save_folder,'search_results',f'{tuner.project_name}.csv')
+    # set up the filepath for this trial based on the project name
+    filepath=os.path.join(save_folder,'search_results',f'{tuner.project_name}.csv')
     
     # using the below method so we can also include the score
     results = []
     score = None
     for r in tuner.oracle.get_best_trials(num_to_save):
-        # include the filename so we can differentiate them when/if we merge these
-        x = {"trial": filename.split('/')[-1].split('.')[0]}
+        # include the project name so we can differentiate them when/if we merge these
+        x = {"trial": tuner.project_name}
         # we want the hyperparameter values
         x.update(r.hyperparameters.values)
         # and the models score, we'll also save this for the first result
@@ -124,7 +123,7 @@ def save_hp_search(tuner,runtime,num_to_save=5,save_folder='results/'):
         results.append(x)
     
     # create the file
-    with open(filename, 'w', newline='') as output_file:
+    with open(filepath, 'w', newline='') as output_file:
         # get a list of all keys first
         headings = [k for k in {k:None for d in results for k in d}]
         # now write out the headings
@@ -132,20 +131,21 @@ def save_hp_search(tuner,runtime,num_to_save=5,save_folder='results/'):
         dict_writer.writeheader()
         # and iterate over the items in the list
         dict_writer.writerows(results)
+        print(f'\nTop {num_to_save} results for {tuner.project_name} saved to: {filepath}')
     
-    filename=os.path.join(save_folder,'hpsearch_comparison.json')
+    filepath=os.path.join(save_folder,'hpsearch_comparison.json')
     trial_result = {tuner.project_name: {'score': score, 'runtime_seconds':runtime}}
     # we'll save the overall results as json, need to update this as we go
-    if os.path.exists(filename):
-        results = json.load(open(filename, 'r'))
+    if os.path.exists(filepath):
+        results = json.load(open(filepath, 'r'))
         if tuner.project_name not in results.keys():
             results.update(trial_result)
-            json.dump(results, open(filename, 'w'), indent="\t")
-            print(f'\nTop {num_to_save} results for {tuner.project_name} added to: {filename}')
+            json.dump(results, open(filepath, 'w'), indent="\t")
+            print(f'\nResults for {tuner.project_name} added to: {filepath}')
     else:
-        json.dump(trial_result, open(filename, 'w'), indent="\t")    
+        json.dump(trial_result, open(filepath, 'w'), indent="\t")    
         # confirm results saved
-        print(f'\nTop {num_to_save} results saved to: {filename}')
+        print(f'\nTop {num_to_save} results saved to: {filepath}')
 
 def load_hp_searches(load_folder='results/search_results/',metric='val_accuracy'):
     """
@@ -166,8 +166,8 @@ def load_hp_searches(load_folder='results/search_results/',metric='val_accuracy'
     # now we can create a list of results, iterate over the above list and populate it
     results_list = []
     for f in files:
-        filename=os.path.join(load_folder,f)
-        with open(filename, 'r') as c:
+        filepath=os.path.join(load_folder,f)
+        with open(filepath, 'r') as c:
             r = csv.DictReader(c)
             results_list.extend(list(r))
     

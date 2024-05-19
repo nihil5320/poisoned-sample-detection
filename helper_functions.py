@@ -1,6 +1,5 @@
 import tensorflow as tf
 import matplotlib.pyplot as plt
-import numpy as np
 
 # set up some more detailed metrics, code from Evaluating_models_with_precision_and_recall.ipynb
 METRICS = [
@@ -71,9 +70,9 @@ def display_samples(display_ds, class_map, grid_shape=(4, 4)):
     Displays images from a dataset in a grid of the specified dimensions
     
     Args:
-        dataset (dataset): dataset iterator
-        class_map (dict): dict containing mapping from class IDs to string name
-        grid_shape (tuple, optional): _description_. Defaults to (4, 4).
+        dataset (dataset): Dataset from which samples are taken.
+        class_map (dict): Dict containing mapping from class IDs to string description.
+        grid_shape (tuple, optional): Shape of the grid in which images are displayed. Defaults to (4, 4).
     """
     # create us some subplots    
     fig, axes = plt.subplots(*grid_shape, figsize=(10, 10))
@@ -95,7 +94,7 @@ def display_samples(display_ds, class_map, grid_shape=(4, 4)):
     plt.tight_layout()
     plt.show()
 
-def show_incorrect_predictions(model, dataset, class_map, num_to_display=16):
+def show_incorrect_predictions(model, dataset, class_map, grid_shape=(4,4)):
     """
     Method to take predictions against a dataset and display the resulting images with their predicted and actual classes.
     
@@ -107,10 +106,12 @@ def show_incorrect_predictions(model, dataset, class_map, num_to_display=16):
         model (tensorflow model): Model to be used for prediction.
         dataset (tensorflow dataset): Dataset that predictions will be made against.
         class_map (dict): Dictionary containing the class map for the dataset.
-        num_to_display (int): Number of samples to display. Defaults to 16.
+        grid_shape (int): Number of samples to display. Defaults to 16.
     """
-    # the below code has been adapted from TM358: CNN_01_MNIST.ipynb
-    # first we will create lists of false positives, negatives and correct predictions
+    # create us some subplots    
+    fig, axes = plt.subplots(*grid_shape, figsize=(10, 10))
+    
+    # create lists of false positives, false negatives and correct predictions
     false_positives = []
     false_negatives = []
     correct_predictions = []
@@ -130,13 +131,11 @@ def show_incorrect_predictions(model, dataset, class_map, num_to_display=16):
                 false_positives.append((image, predicted_class, actual_class))
             else:
                 false_negatives.append((image, predicted_class, actual_class))
-        # stop early if we've got enough samples to draw our grid
-        if len(false_positives)+len(false_negatives)+len(correct_predictions) >= num_to_display:
+        # stop early if we've got enough samples, excluding correct predictions, to draw our grid
+        if len(false_positives)+len(false_negatives) >= len(axes.flatten()):
             break
     
-    # now we can start displaying the images
-    plt.figure(figsize=(15, 10))
-    for i in range(0,num_to_display):
+    for i, ax in enumerate(axes.flatten()):
         # to alternate we're prioritising false_positives on even numbers, or where we have false_positives but false_negatives is empty
         if false_positives and (i % 2 == 0 or not false_negatives):
             img, predicted_class, actual_class = false_positives.pop()
@@ -150,11 +149,10 @@ def show_incorrect_predictions(model, dataset, class_map, num_to_display=16):
             print('Exhausted dataset after {i} samples.')
             break
         # once we've decided which list to assign the variables from we can plot the image
-        plt.subplot(4,4,i+1)
-        plt.xticks([])
-        plt.yticks([])
-        plt.grid(False)
-        plt.imshow(img.astype('uint8'))
-        plt.title(f"P: {class_map[predicted_class]} (A: {class_map[actual_class]})",
+        ax.imshow(img)
+        # the below code has been taken from TM358: CNN_01_MNIST.ipynb to display correct predictions in green, incorrect in red
+        ax.set_title(f"P: {class_map[predicted_class]} (A: {class_map[actual_class]})",
                                     color=("green" if predicted_class == actual_class else "red"))
+        ax.axis('off')
+    plt.tight_layout()
     plt.show()
