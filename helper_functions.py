@@ -118,7 +118,7 @@ def show_incorrect_predictions(model, dataset, class_map, grid_shape=(4,4)):
     # iterate over the dataset to populate these lists
     for image_batch, labels in dataset:
         # make predictions against this specific batch
-        predictions = model.predict(image_batch, verbose=0)
+        predictions = model.predict_on_batch(image_batch)
         # get a numpy array of the images and round the prediction for comparison to the actual class
         images = image_batch.numpy()
         predicted_classes = [0 if p[0] < .5 else 1 for p in predictions.tolist()]

@@ -86,8 +86,6 @@ def parse_image(filepath, image_size, crop_and_pad):
         else:
             # note resize outputs float32 unless we use nearest neighbour, whilst decode_jpeg uses uint8
             image = tf.image.resize(image, (image_size, image_size), tf.image.ResizeMethod.NEAREST_NEIGHBOR)
-            # we can convert back to tf.uint8 but this significantly degrades image quality
-            # image = tf.image.convert_image_dtype(image, tf.uint8)
 
     return image, encoded_label
 
@@ -143,9 +141,9 @@ def save_hp_search(tuner,runtime,num_to_save=5,save_folder='results/'):
             json.dump(results, open(filepath, 'w'), indent="\t")
             print(f'\nResults for {tuner.project_name} added to: {filepath}')
     else:
-        json.dump(trial_result, open(filepath, 'w'), indent="\t")    
+        json.dump(trial_result, open(filepath, 'w'), indent="\t")
         # confirm results saved
-        print(f'\nTop {num_to_save} results saved to: {filepath}')
+        print(f'Top {num_to_save} results saved to: {filepath}\n')
 
 def load_hp_searches(load_folder='results/search_results/',metric='val_accuracy'):
     """
