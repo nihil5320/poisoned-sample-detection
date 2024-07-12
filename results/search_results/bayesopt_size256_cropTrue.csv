@@ -1,6 +1,0 @@
-trial,learning_rate,flip_augmentation,rotate_augmentation,conv1_filters,residual_connections,block_repetitions,block_1_filters,block_2_filters,final_conv_filters,dropout,val_accuracy
-bayesopt_size256_cropTrue,0.00065536,False,0.0,16,True,2,192,256,1024,0.05,0.9871212244033813
-bayesopt_size256_cropTrue,0.00016384,False,0.0,64,False,1,576,,512,0.2,0.9666666388511658
-bayesopt_size256_cropTrue,0.00016384,False,0.0,64,False,1,192,,1024,0.1,0.9401515126228333
-bayesopt_size256_cropTrue,0.00032768,True,0.1,128,False,2,320,384,1024,0.0,0.9196969866752625
-bayesopt_size256_cropTrue,0.00262144,False,0.2,8,False,2,64,128,896,0.1,0.8909090757369995

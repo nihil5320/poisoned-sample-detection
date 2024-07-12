@@ -1,4 +1,3 @@
-ipython==8.12.3
 keras_tuner==1.4.7
-matplotlib==3.8.4
+matplotlib==3.9.1
 tensorflow==2.15.0+nv24.3
