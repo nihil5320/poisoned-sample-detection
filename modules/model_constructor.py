@@ -37,18 +37,25 @@ class CustomHyperModel(kt.HyperModel):
         
         # now we can sort out the variables we'll need to build our model
         params = {
+            # optimiser
+            "optimiser_name": hp.Choice("optimiser_name", ['Adam','AdamW','SGD']),
             # learning rate
-            "learning_rate": hp.Float("learning_rate", min_value=1e-8, max_value=0.01, step=2, sampling="log"),
+            "learning_rate": hp.Float("learning_rate", min_value=1e-5, max_value=0.001, step=1.5, sampling="log"),
+            # weight decay for AdamW
+            "weight_decay": hp.Float("weight_decay", min_value=1e-5, max_value=0.1, step=10, sampling="log", parent_name='optimiser_name', parent_values=['AdamW']),
+            # momentum for SGD
+            "momentum": hp.Float("momentum", min_value=0.75, max_value=0.99, step=0.04, parent_name='optimiser_name', parent_values=['SGD']),
             # filters in the first conv layer
             "conv1_filters": hp.Int('conv1_filters', min_value=8, max_value=128, step=2, sampling="log"),
             # do we want to use skip connections for the middle layers?
             "residual_connections": hp.Boolean('residual_connections'),
             # now how many times do we want to repeat those layers in that middle block?
-            "block_repetitions": hp.Int('block_repetitions', min_value=1, max_value=3, step=1),
+            "block_repetitions": hp.Int('block_repetitions', min_value=1, max_value=4, step=1),
             # now decide how big we want each of these blocks to be
-            "block_1_filters": hp.Int('block_1_filters', min_value=64, max_value=576, step=128, parent_name='block_repetitions', parent_values=[1,2,3]),
-            "block_2_filters": hp.Int('block_2_filters', min_value=128, max_value=640, step=128, parent_name='block_repetitions', parent_values=[2,3]),
-            "block_3_filters": hp.Int('block_3_filters', min_value=256, max_value=768, step=128, parent_name='block_repetitions', parent_values=[3]),
+            "block_1_filters": hp.Int('block_1_filters', min_value=64, max_value=704, step=128, parent_name='block_repetitions', parent_values=[1,2,3,4]),
+            "block_2_filters": hp.Int('block_2_filters', min_value=128, max_value=768, step=128, parent_name='block_repetitions', parent_values=[2,3,4]),
+            "block_3_filters": hp.Int('block_3_filters', min_value=128, max_value=768, step=128, parent_name='block_repetitions', parent_values=[3,4]),
+            "block_4_filters": hp.Int('block_4_filters', min_value=128, max_value=768, step=128, parent_name='block_repetitions', parent_values=[4]),
             # filters in the final conv layer
             "final_conv_filters": hp.Int('final_conv_filters', min_value=512, max_value=1024, step=128),
             # lastly we'll just set the dropout
@@ -63,11 +70,14 @@ class CustomHyperModel(kt.HyperModel):
 
         return model
     
-    def model_builder(self,learning_rate,conv1_filters,residual_connections,block_repetitions,block_1_filters,block_2_filters,block_3_filters,final_conv_filters,dropout):
+    def model_builder(self,optimiser_name,weight_decay,momentum,learning_rate,conv1_filters,residual_connections,block_repetitions,block_1_filters,block_2_filters,block_3_filters,block_4_filters,final_conv_filters,dropout):
         """
         Given a list of parameters will build and return an associated model, used during hyperparameter tuning or to recreate the models after the fact.
 
         Args:
+            optimiser_name (string): name of the optimiser to use
+            weight_decay (float): weight decay if using AdamW (we are not using weight decay for Adam)
+            momentum (float): momentum if using SGD
             learning_rate (float): learning rate
             conv1_filters (int): number of filters in the first convolutional layer
             residual_connections (bool): flag indicating whether we are to use residual connections, these will go from the end to the start of the "midblocks"
@@ -75,6 +85,7 @@ class CustomHyperModel(kt.HyperModel):
             block_1_filters (int): number of filters in the convolutional layers in the first iteration of the middle block(s)
             block_2_filters (int): number of filters in the convolutional layers in the second iteration of the middle block(s)
             block_3_filters (int): number of filters in the convolutional layers in the third iteration of the middle block(s)
+            block_4_filters (int): number of filters in the convolutional layers in the fourth iteration of the middle block(s)
             final_conv_filters (int): filters in the final convolutional layer
             dropout (float): value for the dropout layer 
 
@@ -94,7 +105,7 @@ class CustomHyperModel(kt.HyperModel):
             previous_block_activation = x  # Set aside residual
 
         # we'll iterate over and recreate this block for the 1-3 times specified by block_repetitions
-        mid_layers = [block_1_filters, block_2_filters, block_3_filters]
+        mid_layers = [block_1_filters, block_2_filters, block_3_filters, block_4_filters]
         for size in mid_layers[:block_repetitions]:
             x = tf.keras.layers.Activation("relu")(x)
             x = tf.keras.layers.SeparableConv2D(size, 3, padding="same")(x)
@@ -129,9 +140,17 @@ class CustomHyperModel(kt.HyperModel):
         
         model = tf.keras.Model(inputs, outputs)
 
+        # set up the optimiser
+        if optimiser_name == 'Adam':
+            optimiser = tf.keras.optimizers.Adam(learning_rate)
+        elif optimiser_name == 'AdamW':
+            optimiser = tf.keras.optimizers.AdamW(learning_rate,weight_decay=weight_decay)
+        elif optimiser_name == 'SGD':
+            optimiser = tf.keras.optimizers.SGD(learning_rate,momentum=momentum)
+        
         # and compile the model before returning it
         model.compile(
-            optimizer=tf.keras.optimizers.Adam(learning_rate),
+            optimizer=optimiser,
             loss=tf.keras.losses.BinaryCrossentropy(),
             metrics=[tf.keras.metrics.BinaryAccuracy(name="accuracy")],
         )

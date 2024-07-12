@@ -32,37 +32,30 @@ def load_datasets(folder_path, batch_size, image_size=512):
 def load_dataset(folder_path, batch_size, image_size):    
     # see https://www.tensorflow.org/guide/data_performance
     
-    # first set up the layer to crop images
-    # see https://www.tensorflow.org/api_docs/python/tf/keras/layers/RandomCrop
-    random_crop_layer = tf.keras.layers.RandomCrop(image_size, image_size, dtype='uint8')
-
-    # define a function that applies the layer
-    # see https://keras.io/examples/vision/image_classification_from_scratch/
-    def random_crop(images):
-        with tf.device('/device:gpu:1'):
-            images = random_crop_layer(images)
-        return images
-    
     # get a list of all the files in this dataset folder and subdirectories
     list_ds = tf.data.Dataset.list_files(folder_path)
     
     # now we want iterate over that list of files and map them to a new ds
-    # we then map this again to apply augmentation
-    # can't cache here unfortunately as it uses too much system memory, and cache after crop prevents randomisation
+    # we are cropping most large images in the first map so that we can cache without using too much memory
+    # in the second map we are applying a random crop
     built_ds = (
         list_ds
         .map(
             lambda x: parse_image(x),
             num_parallel_calls=tf.data.AUTOTUNE
         )
-        #.cache()
+        .cache()
         .map(
-            lambda x, y: (random_crop(x), y),
+            lambda x, y: (
+                tf.image.random_crop(x, size=(image_size, image_size, 3)),
+                y
+            ),
             num_parallel_calls=tf.data.AUTOTUNE
         )
-        .shuffle(100)
+        .shuffle(500)
         .batch(batch_size)
-        .prefetch(tf.data.AUTOTUNE)
+        .prefetch(50)
+        #.prefetch(tf.data.AUTOTUNE)
     )
     return built_ds
 
@@ -90,6 +83,13 @@ def parse_image(filepath):
     # read and decode the file
     image = tf.io.read_file(filepath)
     image = tf.io.decode_jpeg(image,channels=3)
+
+    # resizing some of these so they don't take up all our memory when we cache
+    max_res=768
+    shape = tf.shape(image)
+    h, w = shape[0], shape[1]
+    if h>max_res and w>max_res:
+        image = tf.image.random_crop(image, (max_res, max_res, 3))
 
     return image, encoded_label
 
