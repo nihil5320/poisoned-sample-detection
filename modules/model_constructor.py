@@ -40,26 +40,26 @@ class CustomHyperModel(kt.HyperModel):
             # optimiser
             "optimiser_name": hp.Choice("optimiser_name", ['Adam','AdamW','SGD']),
             # learning rate
-            "learning_rate": hp.Float("learning_rate", min_value=1e-5, max_value=0.001, step=1.5, sampling="log"),
+            "learning_rate": hp.Float("learning_rate", min_value=5e-5, max_value=0.003, step=1.3, sampling="log"),
             # weight decay for AdamW
             "weight_decay": hp.Float("weight_decay", min_value=1e-5, max_value=0.1, step=10, sampling="log", parent_name='optimiser_name', parent_values=['AdamW']),
             # momentum for SGD
-            "momentum": hp.Float("momentum", min_value=0.75, max_value=0.99, step=0.04, parent_name='optimiser_name', parent_values=['SGD']),
+            "momentum": hp.Float("momentum", min_value=0.8, max_value=0.99, step=0.01, parent_name='optimiser_name', parent_values=['SGD']),
             # filters in the first conv layer
-            "conv1_filters": hp.Int('conv1_filters', min_value=8, max_value=128, step=2, sampling="log"),
+            "conv1_filters": hp.Int('conv1_filters', min_value=8, max_value=128, step=8),
             # do we want to use skip connections for the middle layers?
             "residual_connections": hp.Boolean('residual_connections'),
             # now how many times do we want to repeat those layers in that middle block?
-            "block_repetitions": hp.Int('block_repetitions', min_value=1, max_value=4, step=1),
+            "block_repetitions": hp.Int('block_repetitions', min_value=2, max_value=4, step=1),
             # now decide how big we want each of these blocks to be
-            "block_1_filters": hp.Int('block_1_filters', min_value=64, max_value=704, step=128, parent_name='block_repetitions', parent_values=[1,2,3,4]),
-            "block_2_filters": hp.Int('block_2_filters', min_value=128, max_value=768, step=128, parent_name='block_repetitions', parent_values=[2,3,4]),
-            "block_3_filters": hp.Int('block_3_filters', min_value=128, max_value=768, step=128, parent_name='block_repetitions', parent_values=[3,4]),
-            "block_4_filters": hp.Int('block_4_filters', min_value=128, max_value=768, step=128, parent_name='block_repetitions', parent_values=[4]),
+            "block_1_filters": hp.Int('block_1_filters', min_value=64, max_value=256, step=64, parent_name='block_repetitions', parent_values=[2,3,4]),
+            "block_2_filters": hp.Int('block_2_filters', min_value=128, max_value=512, step=64, parent_name='block_repetitions', parent_values=[2,3,4]),
+            "block_3_filters": hp.Int('block_3_filters', min_value=128, max_value=512, step=64, parent_name='block_repetitions', parent_values=[3,4]),
+            "block_4_filters": hp.Int('block_4_filters', min_value=128, max_value=768, step=64, parent_name='block_repetitions', parent_values=[4]),
             # filters in the final conv layer
-            "final_conv_filters": hp.Int('final_conv_filters', min_value=512, max_value=1024, step=128),
+            "final_conv_filters": hp.Int('final_conv_filters', min_value=512, max_value=1024, step=64),
             # lastly we'll just set the dropout
-            "dropout": hp.Float('dropout', min_value=0, max_value=0.4, step=0.05),
+            "dropout": hp.Float('dropout', min_value=0, max_value=0.3, step=0.05),
         }
         
         # and chuck all of this at the model constructor

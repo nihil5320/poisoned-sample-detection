@@ -29,7 +29,17 @@ def load_datasets(folder_path, batch_size, image_size=512):
     
     return ds
 
-def load_dataset(folder_path, batch_size, image_size):    
+def load_dataset(folder_path, batch_size, image_size):
+    """_summary_
+
+    Args:
+        folder_path (_type_): _description_
+        batch_size (_type_): _description_
+        image_size (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
     # see https://www.tensorflow.org/guide/data_performance
     
     # get a list of all the files in this dataset folder and subdirectories
@@ -54,22 +64,18 @@ def load_dataset(folder_path, batch_size, image_size):
         )
         .shuffle(500)
         .batch(batch_size)
-        .prefetch(50)
-        #.prefetch(tf.data.AUTOTUNE)
+        .prefetch(tf.data.AUTOTUNE)
     )
     return built_ds
 
-# Reads an image from a file, decodes it into a dense tensor
-# and resizes it if needed to a fixed shape.
 def parse_image(filepath):
     """
-    Takes a filepath to a jpg image and a desired size in pixels for the image (width and height will always be equal).
+    Takes a filepath to a jpg image. Reads the image from disk, converts to tensor and returns with label.
     
-    Reads the image from disk and converts to tensor, assigns a label based on the path and applies crop/padding if necessary.
+    Image is cropped to 768x768 if it exceeds this resolutions. Label is assigned based on the name of the directory the image is in.
 
     Args:
         filepath (string): Filepath describing the location of the image on disk
-        image_size (int): A single integer that describes the desired height and width of the image
 
     Returns:
         image: tensor of shape (image_size, image_size, 3) containing the image
